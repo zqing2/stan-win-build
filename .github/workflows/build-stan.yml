@@ -16,21 +16,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 这里自动安装 R + Rtools（无需 setup-rtools）
+      # 安装 R，并把 Rtools43 放进 PATH
       - name: Setup R (with Rtools)
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: 'release'
-          install-rtools: true
-          rtools-version: '43'   # 使用 Rtools43（ucrt64）
+          rtools-version: '43'
+          windows-path-include-rtools: true
+          use-public-rspm: true
 
+      # 显式安装 cmdstanr（用 mc-stan 源，最稳）
+      - name: Install cmdstanr
+        run: |
+          Rscript -e "options(repos=c(CRAN='https://cloud.r-project.org'))"
+          Rscript -e "install.packages('cmdstanr', repos=c('https://mc-stan.org/r-packages/', getOption('repos')))"
+          Rscript -e "packageVersion('cmdstanr'); sessionInfo()"
+
+      # 可视化检查工具链
       - name: Show toolchain
         shell: bash
         run: |
-          Rscript -e "sessionInfo()"
           echo "RTOOLS43_HOME=${RTOOLS43_HOME}"
           ls -l "$RTOOLS43_HOME/ucrt64/bin" || true
 
+      # 编译并打包
       - name: Build Stan EXE
         run: Rscript scripts/build.R
 
