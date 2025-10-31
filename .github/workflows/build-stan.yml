@@ -16,7 +16,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 安装 R + 把 Rtools43 放进 PATH（用 RSPM 提供二进制更稳）
       - name: Setup R (with Rtools)
         uses: r-lib/actions/setup-r@v2
         with:
@@ -25,17 +24,14 @@ jobs:
           windows-path-include-rtools: true
           use-public-rspm: true
 
-      # 安装 remotes，并优先用 CRAN 安装 cmdstanr；失败则退到 GitHub
       - name: Install cmdstanr (CRAN first, GitHub fallback)
+        shell: bash
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
         run: |
           Rscript -e "options(repos=c(CRAN='https://cloud.r-project.org')); install.packages('remotes', quiet=TRUE)"
-          Rscript -e "ok <- tryCatch({install.packages('cmdstanr', quiet=TRUE); TRUE}, error=function(e) FALSE); \
-                      if (!ok || !requireNamespace('cmdstanr', quietly=TRUE)) { \
-                        remotes::install_github('stan-dev/cmdstanr', upgrade='never'); \
-                      } \
-                      print(packageVersion('cmdstanr')); sessionInfo()"
+          Rscript -e "ok <- tryCatch({install.packages('cmdstanr', quiet=TRUE); TRUE}, error=function(e) FALSE); if (!ok || !requireNamespace('cmdstanr', quietly=TRUE)) { remotes::install_github('stan-dev/cmdstanr', upgrade='never') } ; cat('cmdstanr version: '); print(as.character(packageVersion('cmdstanr'))); sessionInfo()"
 
-      # （可选）缓存 CmdStan 编译目录，使二次构建更快
       - name: Cache CmdStan
         uses: actions/cache@v4
         with:
